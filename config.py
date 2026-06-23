@@ -1,0 +1,7 @@
+# Настройки бота
+TOKEN = "vk1.a.1SDORZyggOShNsGWTvyIgModFrtGaoePHxPYT_W-GGEOH7CFm5KonV8Riyix6VptFoe-9dyXcX-s6csX_UxzYZ9_NBeGFHcQGwTVL2QsHJW9IxsAe2DvErYk_FMY21RTzW3z9qbEC2Y1dzZvWh_4aaqYre9268fMe6htCrvrjb37FxSLNdN17X2WB0Ppyt5kdWqRAHnqAGgHPhdv_O6KZQ"
+GROUP_ID = 238640930
+
+# Веса для теста-навигатора
+WEIGHT_PRIMARY = 3
+WEIGHT_SECONDARY = 1
