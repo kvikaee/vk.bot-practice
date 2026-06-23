@@ -196,3 +196,8 @@ def kb_after_quiz_finish():
     kb.add_line()
     kb.add_button("🏠 Главное меню", color=VkKeyboardColor.PRIMARY)
     return kb
+
+def kb_quiz_next_round():
+    kb = VkKeyboard(one_time=False)
+    kb.add_button("➡️ Следующий раунд", color=VkKeyboardColor.POSITIVE)
+    return kb

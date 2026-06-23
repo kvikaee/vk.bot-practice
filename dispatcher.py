@@ -11,7 +11,8 @@ from handlers import (
     handle_safety_algorithm,
     start_detective, handle_detective_answer,
     start_quiz, handle_quiz_round1_answer, handle_quiz_round2_answer,
-    ask_quiz_question
+    ask_quiz_question,
+    handle_quiz_next_round   # <-- добавлен импорт
 )
 from keyboards import (
     kb_main, kb_problems, kb_why_not_state, kb_after_deep_dive,
@@ -95,6 +96,11 @@ def dispatch(vk, user_id, message_text):
     # ── Обработка кнопки «Дальше» для пошагового просмотра ──
     if msg == "➡️ Дальше" and state == "why_not_state":
         handle_why_next(vk, user_id)
+        return
+
+    # ── Обработка кнопки «Следующий раунд» для квиза ──
+    if msg == "➡️ Следующий раунд" and state == "quiz_round1_finished":
+        handle_quiz_next_round(vk, user_id)
         return
 
     # ── Машина состояний ──

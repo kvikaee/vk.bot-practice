@@ -16,7 +16,7 @@ from keyboards import (
     kb_resources, kb_main_only, kb_detective_options,
     kb_after_detective, kb_quiz_round1_options,
     kb_quiz_round2_hint, kb_after_quiz_question, kb_after_quiz_finish,
-    kb_why_next
+    kb_why_next, kb_quiz_next_round
 )
 from state import user_states
 from utils import send_message, get_photo_attachment
@@ -413,13 +413,11 @@ def get_quiz_image_path(prefix, number):
     number: номер вопроса/ответа (для final не используется)
     """
     if prefix == "final":
-        # Проверяем оба расширения: .jpg и .png
         for ext in [".jpg", ".png"]:
             path = os.path.join("pics", "quiz", f"final{ext}")
             if os.path.exists(path):
                 return path
         return None
-    # Для вопросов и ответов используем .jpg (если у вас есть png, можно тоже добавить)
     for ext in [".jpg", ".png"]:
         filename = f"{prefix}{number}{ext}"
         path = os.path.join("pics", "quiz", filename)
@@ -456,17 +454,16 @@ def ask_quiz_question(vk, user_id):
 
     if round_num == 1:
         if idx >= len(QUIZ_ROUND1):
-            state_data["quiz_round"] = 2
-            state_data["state"] = "quiz_round2"
-            state_data["quiz_index"] = 0
+            # Раунд 1 окончен – показываем кнопку для перехода ко второму раунду
+            user_states[user_id]["state"] = "quiz_round1_finished"
             send_message(
                 vk, user_id,
-                "🏁 Раунд 1 окончен! Переходим к раунду 2 — «Последний шанс». "
-                "Здесь ответ нужно написать текстом (можно без точного соблюдения "
-                "регистра — бот не придирчив 🙂)."
+                "🏁 Раунд 1 окончен! Переходим к раунду 2 — «Последний шанс».\n"
+                "Нажми кнопку ниже, чтобы продолжить.",
+                kb_quiz_next_round()
             )
-            ask_quiz_question(vk, user_id)
             return
+
         state_data["state"] = "quiz_round1"
         q = QUIZ_ROUND1[idx]
         text = q["question"] + "\n\n" + "\n".join(q["options"])
@@ -578,7 +575,6 @@ def finish_quiz(vk, user_id):
         "Спасибо за игру 💙"
     )
     user_states[user_id]["state"] = "after_quiz"
-    # Финальная картинка
     img_path = get_quiz_image_path("final", 0)
     attachment = None
     if img_path:
@@ -587,3 +583,13 @@ def finish_quiz(vk, user_id):
         except Exception as e:
             print(f"Ошибка загрузки финальной картинки: {e}")
     send_message(vk, user_id, text, kb_after_quiz_finish(), attachment)
+
+
+def handle_quiz_next_round(vk, user_id):
+    state_data = user_states.get(user_id, {})
+    if state_data.get("state") != "quiz_round1_finished":
+        return
+    state_data["state"] = "quiz_round2"
+    state_data["quiz_round"] = 2
+    state_data["quiz_index"] = 0
+    ask_quiz_question(vk, user_id)
