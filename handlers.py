@@ -1,4 +1,5 @@
 import random
+import os
 from vk_api.keyboard import VkKeyboard, VkKeyboardColor
 
 from content import (
@@ -18,7 +19,7 @@ from keyboards import (
     kb_why_next
 )
 from state import user_states
-from utils import send_message
+from utils import send_message, get_photo_attachment
 
 
 # ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
@@ -65,7 +66,6 @@ def handle_about(vk, user_id):
 # ========== ОБРАБОТКА ШАГОВ «ПОЧЕМУ ГОСУДАРСТВО» ==========
 
 def handle_why_not_state(vk, user_id):
-    """Отправляет первый шаг, сохраняет индекс."""
     user_states[user_id] = {"state": "why_not_state", "step": 0}
     send_why_step(vk, user_id)
 
@@ -75,7 +75,6 @@ def send_why_step(vk, user_id):
     step = data.get("step", 0)
     steps = WHY_NOT_ONLY_STATE_STEPS
     if step >= len(steps):
-        # Все шаги показаны – переходим к финальной клавиатуре
         send_message(
             vk, user_id,
             "Теперь ты знаешь, почему важно помогать через НКО. Что дальше?",
@@ -84,7 +83,6 @@ def send_why_step(vk, user_id):
         user_states[user_id]["state"] = "why_not_state_shown"
         return
     text = steps[step]
-    # Если это последний шаг, не показываем кнопку «Дальше»
     if step == len(steps) - 1:
         send_message(vk, user_id, text, kb_why_not_state())
         user_states[user_id]["state"] = "why_not_state_shown"
@@ -95,7 +93,6 @@ def send_why_step(vk, user_id):
 
 
 def handle_why_next(vk, user_id):
-    """Обработчик нажатия «Дальше» в пошаговом режиме."""
     data = user_states.get(user_id, {})
     if data.get("state") != "why_not_state":
         return
@@ -103,7 +100,7 @@ def handle_why_next(vk, user_id):
     send_why_step(vk, user_id)
 
 
-# ========== ОСТАЛЬНЫЕ ОБРАБОТЧИКИ (без изменений, кроме адаптации кнопок) ==========
+# ========== ОСТАЛЬНЫЕ ОБРАБОТЧИКИ ==========
 
 def handle_select_problem_for_deep_dive(vk, user_id):
     text = "Выбери социальную проблему, с которой хочешь познакомиться подробнее:"
@@ -201,7 +198,6 @@ def start_game(vk, user_id):
         case_index = 0
     case = GAME_CASES[case_index]
     text = case["text"] + "\n\n" + "\n".join(case["options"])
-    # Передаём полные варианты в клавиатуру
     send_message(vk, user_id, text, kb_game_options(case["options"]))
     user_states[user_id]["state"] = "game_waiting"
     user_states[user_id]["game_case_index"] = case_index
@@ -209,7 +205,6 @@ def start_game(vk, user_id):
 
 
 def handle_game_answer(vk, user_id, answer_text):
-    # Извлекаем букву из первого символа ответа (предполагаем, что кнопка начинается с буквы)
     if not answer_text:
         return
     letter = answer_text[0].upper()
@@ -395,7 +390,6 @@ def start_detective(vk, user_id):
 
 
 def handle_detective_answer(vk, user_id, answer_text):
-    # answer_text будет "Мошенник" или "Можно помогать"
     case_index = user_states[user_id].get("detective_case_index", 0)
     case = DETECTIVE_CASES[case_index]
     is_correct = answer_text == case["correct"]
@@ -408,9 +402,26 @@ def handle_detective_answer(vk, user_id, answer_text):
     send_message(vk, user_id, text, kb_after_detective())
 
 
-# ==================== КВИЗ ====================
+# ==================== КВИЗ С КАРТИНКАМИ ====================
 
 QUIZ_TOTAL_QUESTIONS = len(QUIZ_ROUND1) + len(QUIZ_ROUND2)
+
+def get_quiz_image_path(prefix, number):
+    """
+    Возвращает путь к файлу картинки, если он существует, иначе None.
+    prefix: 'q' или 'ans' или 'final'
+    number: номер вопроса/ответа (для final не используется)
+    """
+    if prefix == "final":
+        path = os.path.join("pics", "quiz", "final.jpg")
+        if os.path.exists(path):
+            return path
+        return None
+    filename = f"{prefix}{number}.jpg"
+    path = os.path.join("pics", "quiz", filename)
+    if os.path.exists(path):
+        return path
+    return None
 
 
 def start_quiz(vk, user_id):
@@ -455,7 +466,15 @@ def ask_quiz_question(vk, user_id):
         state_data["state"] = "quiz_round1"
         q = QUIZ_ROUND1[idx]
         text = q["question"] + "\n\n" + "\n".join(q["options"])
-        send_message(vk, user_id, text, kb_quiz_round1_options(q["options"]))
+        num = idx + 1
+        img_path = get_quiz_image_path("q", num)
+        attachment = None
+        if img_path:
+            try:
+                attachment = get_photo_attachment(vk, img_path)
+            except Exception as e:
+                print(f"Ошибка загрузки картинки {img_path}: {e}")
+        send_message(vk, user_id, text, kb_quiz_round1_options(q["options"]), attachment)
 
     elif round_num == 2:
         if idx >= len(QUIZ_ROUND2):
@@ -463,11 +482,19 @@ def ask_quiz_question(vk, user_id):
             return
         state_data["state"] = "quiz_round2"
         q = QUIZ_ROUND2[idx]
-        send_message(vk, user_id, q["question"], kb_quiz_round2_hint())
+        # Для round2 номера файлов: 18,19,20,21
+        real_num = idx + 1 + len(QUIZ_ROUND1)
+        img_path = get_quiz_image_path("q", real_num)
+        attachment = None
+        if img_path:
+            try:
+                attachment = get_photo_attachment(vk, img_path)
+            except Exception as e:
+                print(f"Ошибка загрузки картинки {img_path}: {e}")
+        send_message(vk, user_id, q["question"], kb_quiz_round2_hint(), attachment)
 
 
 def handle_quiz_round1_answer(vk, user_id, answer_text):
-    # Извлекаем букву из первого символа
     if not answer_text:
         return
     letter = answer_text[0].upper()
@@ -481,10 +508,18 @@ def handle_quiz_round1_answer(vk, user_id, answer_text):
     else:
         result_icon, result_text = "❌", "Не совсем."
     text = f"{result_icon} {result_text}\n\n{q['explain']}"
+    num = idx + 1
+    img_path = get_quiz_image_path("ans", num)
+    attachment = None
+    if img_path:
+        try:
+            attachment = get_photo_attachment(vk, img_path)
+        except Exception as e:
+            print(f"Ошибка загрузки картинки {img_path}: {e}")
     state_data["quiz_index"] = idx + 1
     state_data["quiz_round"] = 1
     state_data["state"] = "quiz_after_question"
-    send_message(vk, user_id, text, kb_after_quiz_question())
+    send_message(vk, user_id, text, kb_after_quiz_question(), attachment)
 
 
 def handle_quiz_round2_answer(vk, user_id, answer_text):
@@ -499,10 +534,18 @@ def handle_quiz_round2_answer(vk, user_id, answer_text):
     else:
         result_icon, result_text = "❌", "Не совсем."
     text = f"{result_icon} {result_text}\n\n{q['explain']}"
+    real_num = idx + 1 + len(QUIZ_ROUND1)
+    img_path = get_quiz_image_path("ans", real_num)
+    attachment = None
+    if img_path:
+        try:
+            attachment = get_photo_attachment(vk, img_path)
+        except Exception as e:
+            print(f"Ошибка загрузки картинки {img_path}: {e}")
     state_data["quiz_index"] = idx + 1
     state_data["quiz_round"] = 2
     state_data["state"] = "quiz_after_question"
-    send_message(vk, user_id, text, kb_after_quiz_question())
+    send_message(vk, user_id, text, kb_after_quiz_question(), attachment)
 
 
 def finish_quiz(vk, user_id):
@@ -516,6 +559,7 @@ def finish_quiz(vk, user_id):
         rank = "👍 Неплохо! Но точно есть, что узнать ещё."
     else:
         rank = "🌱 Начало положено — а дальше будет только интереснее."
+
     text = (
         f"🎉 Квиз завершён!\n\n"
         f"Твой результат: {score} из {total} баллов.\n\n"
@@ -524,4 +568,12 @@ def finish_quiz(vk, user_id):
         "Спасибо за игру 💙"
     )
     user_states[user_id]["state"] = "after_quiz"
-    send_message(vk, user_id, text, kb_after_quiz_finish())
+    # Финальная картинка
+    img_path = get_quiz_image_path("final", 0)
+    attachment = None
+    if img_path:
+        try:
+            attachment = get_photo_attachment(vk, img_path)
+        except Exception as e:
+            print(f"Ошибка загрузки финальной картинки: {e}")
+    send_message(vk, user_id, text, kb_after_quiz_finish(), attachment)
