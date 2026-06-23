@@ -235,7 +235,7 @@ def start_navigator(vk, user_id):
         "Наш чат-бот поможет тебе найти ту самую точку приложения сил, где твой "
         "талант (код, рисунок, доброе слово, золотые руки) принесёт максимальную "
         "пользу.\n\n"
-        "Привет! Я помогу тебе понять, как именно ты можешь помогать решать "
+        "Я помогу тебе понять, как именно ты можешь помогать решать "
         "социальные проблемы. Это не про деньги. Это про твои навыки и интересы!"
     )
     send_message(vk, user_id, intro_text)
@@ -413,14 +413,18 @@ def get_quiz_image_path(prefix, number):
     number: номер вопроса/ответа (для final не используется)
     """
     if prefix == "final":
-        path = os.path.join("pics", "quiz", "final.jpg")
+        # Проверяем оба расширения: .jpg и .png
+        for ext in [".jpg", ".png"]:
+            path = os.path.join("pics", "quiz", f"final{ext}")
+            if os.path.exists(path):
+                return path
+        return None
+    # Для вопросов и ответов используем .jpg (если у вас есть png, можно тоже добавить)
+    for ext in [".jpg", ".png"]:
+        filename = f"{prefix}{number}{ext}"
+        path = os.path.join("pics", "quiz", filename)
         if os.path.exists(path):
             return path
-        return None
-    filename = f"{prefix}{number}.jpg"
-    path = os.path.join("pics", "quiz", filename)
-    if os.path.exists(path):
-        return path
     return None
 
 
@@ -474,7 +478,14 @@ def ask_quiz_question(vk, user_id):
                 attachment = get_photo_attachment(vk, img_path)
             except Exception as e:
                 print(f"Ошибка загрузки картинки {img_path}: {e}")
-        send_message(vk, user_id, text, kb_quiz_round1_options(q["options"]), attachment)
+
+        # Для 11-го (индекс 10) и 16-го (индекс 15) вопросов используем только буквы в кнопках
+        if idx == 10 or idx == 15:
+            button_options = ["А", "Б", "В", "Г"]
+        else:
+            button_options = q["options"]
+
+        send_message(vk, user_id, text, kb_quiz_round1_options(button_options), attachment)
 
     elif round_num == 2:
         if idx >= len(QUIZ_ROUND2):
@@ -482,7 +493,6 @@ def ask_quiz_question(vk, user_id):
             return
         state_data["state"] = "quiz_round2"
         q = QUIZ_ROUND2[idx]
-        # Для round2 номера файлов: 18,19,20,21
         real_num = idx + 1 + len(QUIZ_ROUND1)
         img_path = get_quiz_image_path("q", real_num)
         attachment = None
