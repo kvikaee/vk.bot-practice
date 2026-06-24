@@ -94,7 +94,8 @@ def kb_after_info(include_game=True):
 def kb_game_options(options):
     kb = VkKeyboard(one_time=True)
     for i, opt in enumerate(options):
-        kb.add_button(opt, color=VkKeyboardColor.SECONDARY)
+        label = opt if len(opt) <= 40 else opt[:39] + "…"
+        kb.add_button(label, color=VkKeyboardColor.SECONDARY)
         if i < len(options) - 1:
             kb.add_line()
     return kb
@@ -168,7 +169,8 @@ def kb_after_detective():
 def kb_quiz_round1_options(options):
     kb = VkKeyboard(one_time=True)
     for i, opt in enumerate(options):
-        kb.add_button(opt, color=VkKeyboardColor.SECONDARY)
+        label = opt if len(opt) <= 40 else opt[:39] + "…"
+        kb.add_button(label, color=VkKeyboardColor.SECONDARY)
         if i < len(options) - 1:
             kb.add_line()
     return kb
