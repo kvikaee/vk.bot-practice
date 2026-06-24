@@ -476,13 +476,7 @@ def ask_quiz_question(vk, user_id):
             except Exception as e:
                 print(f"Ошибка загрузки картинки {img_path}: {e}")
 
-        # Для 11-го (индекс 10) и 16-го (индекс 15) вопросов используем только буквы в кнопках
-        if idx == 10 or idx == 15:
-            button_options = ["А", "Б", "В", "Г"]
-        else:
-            button_options = q["options"]
-
-        send_message(vk, user_id, text, kb_quiz_round1_options(button_options), attachment)
+        send_message(vk, user_id, text, kb_quiz_round1_options(q["options"]), attachment)
 
     elif round_num == 2:
         if idx >= len(QUIZ_ROUND2):
