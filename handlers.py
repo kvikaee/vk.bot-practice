@@ -16,7 +16,7 @@ from keyboards import (
     kb_resources, kb_main_only, kb_detective_options,
     kb_after_detective, kb_quiz_round1_options,
     kb_quiz_round2_hint, kb_after_quiz_question, kb_after_quiz_finish,
-    kb_why_next, kb_quiz_next_round
+    kb_why_next, kb_quiz_next_round, kb_after_last_game, kb_after_last_detective
 )
 from state import user_states
 from utils import send_message, get_photo_attachment
@@ -224,7 +224,12 @@ def handle_game_answer(vk, user_id, answer_text):
     next_index = (case_index + 1) % len(GAME_CASES)
     user_states[user_id]["game_case_index"] = next_index
     user_states[user_id]["state"] = "after_game"
-    send_message(vk, user_id, text, kb_after_game())
+
+    # Если это был последний кейс (перешли к первому) – показываем клавиатуру без кнопки «Следующий кейс»
+    if next_index == 0:
+        send_message(vk, user_id, text, kb_after_last_game())
+    else:
+        send_message(vk, user_id, text, kb_after_game())
 
 
 # ==================== ТЕСТ-НАВИГАТОР ====================
@@ -399,7 +404,12 @@ def handle_detective_answer(vk, user_id, answer_text):
     next_index = (case_index + 1) % len(DETECTIVE_CASES)
     user_states[user_id]["detective_case_index"] = next_index
     user_states[user_id]["state"] = "after_detective"
-    send_message(vk, user_id, text, kb_after_detective())
+
+    # Если это был последний кейс – показываем клавиатуру без кнопки «Следующее дело»
+    if next_index == 0:
+        send_message(vk, user_id, text, kb_after_last_detective())
+    else:
+        send_message(vk, user_id, text, kb_after_detective())
 
 
 # ==================== КВИЗ С КАРТИНКАМИ ====================

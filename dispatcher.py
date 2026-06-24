@@ -12,7 +12,7 @@ from handlers import (
     start_detective, handle_detective_answer,
     start_quiz, handle_quiz_round1_answer, handle_quiz_round2_answer,
     ask_quiz_question,
-    handle_quiz_next_round   # <-- добавлен импорт
+    handle_quiz_next_round
 )
 from keyboards import (
     kb_main, kb_problems, kb_why_not_state, kb_after_deep_dive,

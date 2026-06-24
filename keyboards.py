@@ -201,3 +201,21 @@ def kb_quiz_next_round():
     kb = VkKeyboard(one_time=False)
     kb.add_button("➡️ Следующий раунд", color=VkKeyboardColor.POSITIVE)
     return kb
+
+def kb_after_last_game():
+    """Клавиатура после последнего кейса (без кнопки «Следующий кейс»)."""
+    kb = VkKeyboard(one_time=False)
+    kb.add_button("📋 Алгоритм проверки НКО", color=VkKeyboardColor.PRIMARY)
+    kb.add_line()
+    kb.add_button("← Выбрать тему", color=VkKeyboardColor.SECONDARY)
+    kb.add_line()
+    kb.add_button("🏠 Главное меню", color=VkKeyboardColor.PRIMARY)
+    return kb
+
+def kb_after_last_detective():
+    """Клавиатура после последнего дела (без кнопки «Следующее дело»)."""
+    kb = VkKeyboard(one_time=False)
+    kb.add_button("🔍 Безопасная благотворительность", color=VkKeyboardColor.PRIMARY)
+    kb.add_line()
+    kb.add_button("🏠 Главное меню", color=VkKeyboardColor.PRIMARY)
+    return kb
