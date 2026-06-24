@@ -125,7 +125,11 @@ def handle_problem_deep_dive(vk, user_id, problem):
     info = PROBLEMS[problem]
     intro_text = f"{'=' * 30}\n{problem}\n{'=' * 30}"
     send_message(vk, user_id, intro_text)
-    if info.get("video"):
+    # Если есть прикреплённое видео – отправляем его
+    if info.get("video_attachment"):
+        send_message(vk, user_id, "🎬 Видео по теме:", attachment=info["video_attachment"])
+    # Если есть текстовая ссылка – отправляем как текст (для обратной совместимости)
+    elif info.get("video"):
         send_message(vk, user_id, info["video"])
     deep_text = info.get("deep_dive") or info["short"]
     send_message(vk, user_id, deep_text, kb_after_deep_dive())
