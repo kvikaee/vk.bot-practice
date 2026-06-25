@@ -1,12 +1,12 @@
 import random
-import os
 from vk_api.keyboard import VkKeyboard, VkKeyboardColor
 
 from content import (
     PROBLEMS, WHY_NOT_ONLY_STATE_STEPS, NAVIGATOR_QUESTIONS, NAVIGATOR_RESULTS,
     QUIZ_ROUND1, QUIZ_ROUND2, GAME_CASES, DETECTIVE_CASES,
     SAFETY_CHECKLIST, SAFETY_MONEY, SAFETY_VOLUNTEERING,
-    PROBONO_BENEFITS, SAFETY_ALGORITHM
+    PROBONO_BENEFITS, SAFETY_ALGORITHM,
+    QUIZ_ATTACHMENTS   # <-- добавили импорт
 )
 from config import WEIGHT_PRIMARY, WEIGHT_SECONDARY
 from keyboards import (
@@ -19,7 +19,7 @@ from keyboards import (
     kb_why_next, kb_quiz_next_round, kb_after_last_game, kb_after_last_detective
 )
 from state import user_states
-from utils import send_message, get_photo_attachment
+from utils import send_message
 
 
 # ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
@@ -228,8 +228,6 @@ def handle_game_answer(vk, user_id, answer_text):
     next_index = (case_index + 1) % len(GAME_CASES)
     user_states[user_id]["game_case_index"] = next_index
     user_states[user_id]["state"] = "after_game"
-
-    # Если это был последний кейс (перешли к первому) – показываем клавиатуру без кнопки «Следующий кейс»
     if next_index == 0:
         send_message(vk, user_id, text, kb_after_last_game())
     else:
@@ -408,36 +406,15 @@ def handle_detective_answer(vk, user_id, answer_text):
     next_index = (case_index + 1) % len(DETECTIVE_CASES)
     user_states[user_id]["detective_case_index"] = next_index
     user_states[user_id]["state"] = "after_detective"
-
-    # Если это был последний кейс – показываем клавиатуру без кнопки «Следующее дело»
     if next_index == 0:
         send_message(vk, user_id, text, kb_after_last_detective())
     else:
         send_message(vk, user_id, text, kb_after_detective())
 
 
-# ==================== КВИЗ С КАРТИНКАМИ ====================
+# ==================== КВИЗ С КАРТИНКАМИ ИЗ ГРУППЫ ====================
 
 QUIZ_TOTAL_QUESTIONS = len(QUIZ_ROUND1) + len(QUIZ_ROUND2)
-
-def get_quiz_image_path(prefix, number):
-    """
-    Возвращает путь к файлу картинки, если он существует, иначе None.
-    prefix: 'q' или 'ans' или 'final'
-    number: номер вопроса/ответа (для final не используется)
-    """
-    if prefix == "final":
-        for ext in [".jpg", ".png"]:
-            path = os.path.join("pics", "quiz", f"final{ext}")
-            if os.path.exists(path):
-                return path
-        return None
-    for ext in [".jpg", ".png"]:
-        filename = f"{prefix}{number}{ext}"
-        path = os.path.join("pics", "quiz", filename)
-        if os.path.exists(path):
-            return path
-    return None
 
 
 def start_quiz(vk, user_id):
@@ -468,7 +445,6 @@ def ask_quiz_question(vk, user_id):
 
     if round_num == 1:
         if idx >= len(QUIZ_ROUND1):
-            # Раунд 1 окончен – показываем кнопку для перехода ко второму раунду
             user_states[user_id]["state"] = "quiz_round1_finished"
             send_message(
                 vk, user_id,
@@ -482,15 +458,10 @@ def ask_quiz_question(vk, user_id):
         q = QUIZ_ROUND1[idx]
         text = q["question"] + "\n\n" + "\n".join(q["options"])
         num = idx + 1
-        img_path = get_quiz_image_path("q", num)
-        attachment = None
-        if img_path:
-            try:
-                attachment = get_photo_attachment(vk, img_path)
-            except Exception as e:
-                print(f"Ошибка загрузки картинки {img_path}: {e}")
+        key = f"q{num}"
+        attachment = QUIZ_ATTACHMENTS.get(key)  # берём из словаря
 
-        # Для 11-го (индекс 10) и 16-го (индекс 15) вопросов используем только буквы в кнопках
+        # Для 11-го (индекс 10) и 16-го (индекс 15) вопросов – короткие кнопки
         if idx == 10 or idx == 15:
             button_options = ["А", "Б", "В", "Г"]
         else:
@@ -505,13 +476,8 @@ def ask_quiz_question(vk, user_id):
         state_data["state"] = "quiz_round2"
         q = QUIZ_ROUND2[idx]
         real_num = idx + 1 + len(QUIZ_ROUND1)
-        img_path = get_quiz_image_path("q", real_num)
-        attachment = None
-        if img_path:
-            try:
-                attachment = get_photo_attachment(vk, img_path)
-            except Exception as e:
-                print(f"Ошибка загрузки картинки {img_path}: {e}")
+        key = f"q{real_num}"
+        attachment = QUIZ_ATTACHMENTS.get(key)
         send_message(vk, user_id, q["question"], kb_quiz_round2_hint(), attachment)
 
 
@@ -530,13 +496,8 @@ def handle_quiz_round1_answer(vk, user_id, answer_text):
         result_icon, result_text = "❌", "Не совсем."
     text = f"{result_icon} {result_text}\n\n{q['explain']}"
     num = idx + 1
-    img_path = get_quiz_image_path("ans", num)
-    attachment = None
-    if img_path:
-        try:
-            attachment = get_photo_attachment(vk, img_path)
-        except Exception as e:
-            print(f"Ошибка загрузки картинки {img_path}: {e}")
+    key = f"ans{num}"
+    attachment = QUIZ_ATTACHMENTS.get(key)
     state_data["quiz_index"] = idx + 1
     state_data["quiz_round"] = 1
     state_data["state"] = "quiz_after_question"
@@ -556,13 +517,8 @@ def handle_quiz_round2_answer(vk, user_id, answer_text):
         result_icon, result_text = "❌", "Не совсем."
     text = f"{result_icon} {result_text}\n\n{q['explain']}"
     real_num = idx + 1 + len(QUIZ_ROUND1)
-    img_path = get_quiz_image_path("ans", real_num)
-    attachment = None
-    if img_path:
-        try:
-            attachment = get_photo_attachment(vk, img_path)
-        except Exception as e:
-            print(f"Ошибка загрузки картинки {img_path}: {e}")
+    key = f"ans{real_num}"
+    attachment = QUIZ_ATTACHMENTS.get(key)
     state_data["quiz_index"] = idx + 1
     state_data["quiz_round"] = 2
     state_data["state"] = "quiz_after_question"
@@ -589,13 +545,7 @@ def finish_quiz(vk, user_id):
         "Спасибо за игру 💙"
     )
     user_states[user_id]["state"] = "after_quiz"
-    img_path = get_quiz_image_path("final", 0)
-    attachment = None
-    if img_path:
-        try:
-            attachment = get_photo_attachment(vk, img_path)
-        except Exception as e:
-            print(f"Ошибка загрузки финальной картинки: {e}")
+    attachment = QUIZ_ATTACHMENTS.get("final")
     send_message(vk, user_id, text, kb_after_quiz_finish(), attachment)
 
 
