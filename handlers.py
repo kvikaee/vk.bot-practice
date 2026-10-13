@@ -175,8 +175,8 @@ def handle_probono_info(vk, user_id, problem):
         "Pro bono — использовать свои профессиональные навыки "
         "бесплатно для помощи НКО.\n\n"
         f"Примеры задач:\n{tasks}\n\n"
-        f"🔗 Где искать задачи:\n{info['nko'][-1]}\n"
-        "   ProCharity (procharity.ru)"
+        "🔗 Где искать задачи:\n"
+        "ProCharity (procharity.ru)"
     )
     kb = VkKeyboard(one_time=False)
     kb.add_button("🎯 Зачем это мне?", color=VkKeyboardColor.POSITIVE)
